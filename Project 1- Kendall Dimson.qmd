@@ -1,0 +1,38 @@
+---
+title: "PM 566 Project 1: Analyzing Rates and Trends of Vaccine Preventable Diseases in California, 2001-2022"
+author: "Kendall Dimson"
+format: html
+editor: visual
+embed-resources: true
+---
+
+### read in code
+
+```{r setup, include=FALSE}
+
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+
+install.packages("readr")
+
+vaccine <- read_csv("~/Desktop/a7a4d868-f6d2-49c9-8a11-904c69a0e3a0.csv")
+
+#Variables: ID, Disease, County, Year, Count
+```
+
+```{r}
+vaccine |>
+  count(County, sort=TRUE)
+```
+
+##Introduction
+For my project, 
+
+##Methods
+
+##Preliminary Results
+
+##Conclusion
