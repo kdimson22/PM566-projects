@@ -1,38 +1,722 @@
 ---
-title: "PM 566 Project 1: Analyzing Rates and Trends of Vaccine Preventable Diseases in California, 2001-2022"
+title: "Analyzing Rates and Trends of Vaccine Preventable Diseases in California, 2001-2022"
+subtitle: "PM 566 Midterm, Fall 2024, University of Southern California"
 author: "Kendall Dimson"
 format: html
 editor: visual
 embed-resources: true
 ---
 
-### read in code
+## Introduction
+I explored the dataset called "Vaccine Preventable Disease Cases by County and Year" collected from the California Department of Public Health (CDPH). The dataset is a summary of case counts that were reported from the 59 counties in California. In this project, various research questions formulated include: Of the top five vaccine preventable disease cases reported in California in the last decades, were there any disease epidemics in specific counties? Is there a geographical relationship between location and case incidence of the vaccine preventable disease with the highest count? 
 
-```{r setup, include=FALSE}
+## Methods
+The dataset, vaccine, was extracted through the California Health and Human Services Agency, with data collected from the California Department of Public Health. The data includes the variables: ID, Disease (the disease reported), County (the location the disease was reported from), Year (the year that the disease was reported to CDPH), and count (the cumulative number of cases reported of a given disease in a given year, from the specific county). The dataset includes fifteen Disease categories:
 
-options(repos = c(CRAN = "https://cran.rstudio.com/"))
+Diphtheria, Invasive Meningococcal Disease, Measles, Pertussis, Tetanus, Mumps, Rubella, Hepatitis A, Acute Hepatitis B, Acute Hepatitis C, Varicella Hospitalizations, Varicella Hospitalization/Death, Chronic Hepatitis B, Haemophilus influenzae, Perinatal Hepatitis B, and Rubella (Congenital Syndrome). 
+
+In the data cleaning and wrangling step, I removed counties that record 0 cases of a disease, so that the preliminary analysis is focused on counties that did report disease counts. I created a variety of subset datasets. I subsetted the "california" and "county" datasets since there are some categories in "County" variable that have summation number of diseases in California. For each of these I used the filter() function to subset. I used the kable() function to print a table of the total number of vaccine preventable diseases reported in the entirety of the dataset. When analyzing the top 5 diseases reported, I subsetted each into individual datasets, used the arrange() function to print the top five counties of each disease, then created several ggplot barplots to visualize the trend in incidence counts over the years. To analyze the distribution of pertussis cases by counties, I used the leaflet package to code an interactive heat map.
+
+## Preliminary Results
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+vaccine <- read_csv("~/Desktop/a7a4d868-f6d2-49c9-8a11-904c69a0e3a0.csv")
+county <- vaccine |> filter (County != 'California')
+diseases_total <- county |> 
+  group_by(Disease) |> 
+  summarise(Total_Cases = sum(Count, na.rm = TRUE)) |> 
+  arrange(desc(Total_Cases)) |> 
+  slice_head(n = 15)
+
+kable(diseases_total, 
+      col.names = c("Disease", "Total Cases"), 
+      caption = "Table 1. Total Cases of Vaccine-Preventable Diseases Reported in California, 2001-2022")
+```
+
+There were a total of 72,058 incident vaccine preventable cases recorded. The top five in total cases reported were Pertussis (n=57,219), Hepatitis B, chronic (n=4462) and acute (n=1349), Invasive Meningococcal Disease (n=2718), and Hepatitis A (n=3035).
+
+Among the documented Pertussis cases in California, the top five counts of annual reported Pertussis cases occurred in Los Angeles county, which recorded a Pertussis epidemic specifically in 2010, 2014, and 2019 (Figure 1).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(knitr)
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
 
+ pertussis <- county |> filter (Disease == 'Pertussis')
+
+ #Stratify Pertussis, Check Los Angeles Trend
+pertussis_la <- pertussis |> 
+  filter(County == 'Los Angeles')
+
+ggplot(pertussis_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Figure 1: Pertussis Cases in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+  scale_x_continuous(breaks = seq(min(pertussis_la$Year), max(pertussis_la$Year), by = 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+
+Among Chronic Hepatitis B cases, the top five counts of annual reported cases occurred in Los Angeles, Orange, and Kern counties. Los Angeles reported 1064 cases of Chronic HBV in 2022 and 970 cases in 2021. There were data limitations in exploring trends in Chronic Hepatitis B incidence cases because most of the data was recorded from 2021-2022, lacking adequate data to estimate temporality.
+
+Among Hepatitis A cases, the top county's annual reported cases occurred in San Diego, where the county health department reported 585 cases in 2019. When visualizing the trend of Hepatitis A incidence in San Diego, 2017 was the only epidemic that occurred. Otherwise, Hepatitis A transmission is overall low in San Diego county (Figure 2).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+  
+hav <- county |> filter (Disease == 'Hepatitis A')
+#Stratify HAV, Check San Diego Trend
+hav_sd <- hav |> 
+  filter(County == 'San Diego')
+
+ggplot(hav_sd, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(title = "Figure 2: Hepatitis A Cases in San Diego County, by Year",
+       x = "Year",
+       y = "Number of Cases") + 
+  scale_x_continuous(breaks = seq(min(hav_sd$Year), max(hav_sd$Year), by = 1)) +
+  theme_minimal() 
+```
+
+Among Invasive Meningococcal Disease cases, all of the top annual reportings occurred in Los Angeles County in 2001-2002 (n=125), 2005-2006 (n=86), and 2011 (n=37). However, Los Angeles county has had a negative trend in Invasive Meningococcal Disease cases in the last two decades.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+
+IMD <- county |> filter (Disease == 'Invasive Meningococcal Disease')
+
+  #Stratify IMD, Check LA Trend
+IMD_la <- IMD |> 
+  filter(County == 'Los Angeles')
+
+ggplot(IMD_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(title = "Figure 3: Invasive Menginococcal Cases in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+  theme_minimal() 
+
+```
+
+Among cases with Acute Hepatitis B, the most counts of annual reported also occured in Los Angeles county from 2011 and 2013-2016 (n=268). In this region, there is a slight downward trend of acute HBV reporting as well (Figure 4).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+hbv_acute <- county |> filter (Disease == 'Hepatitis B, Acute')
+
+  #Stratify acute HBV, Check LA Trend
+hbv_la <- hbv_acute |> 
+  filter(County == 'Los Angeles')
+
+ggplot(hbv_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "plum") +
+  labs(title = "Figure 4: Acute Hepatitis B in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+    scale_x_continuous(breaks = seq(min(hav_sd$Year), max(hav_sd$Year), by = 1)) +
+  theme_minimal() 
+```
+
+Since pertussis has the greatest incidence disease cases reported, using a heat map by county location in California, it is another visual such that the highest incidence numbers have been reported in Los Angeles county (n=10,956) and San Diego county (n=9,759).
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Preliminary Analysis #2: Is there a geographical relationship between location and case incidence? 
+#HeatMap of Pertussis
+library (leaflet)
+pertussis_tot <- pertussis |> group_by(County)|>
+  summarise(Total_Cases =sum(Count, na.rm=TRUE)) |>
+  ungroup()
+
+county_coordinates <- data.frame(
+  County = c(
+    "Alameda", 
+    "Alpine", 
+    "Amador", 
+    "Butte", 
+    "Calaveras", 
+    "Colusa", 
+    "Contra Costa", 
+    "Del Norte", 
+    "El Dorado", 
+    "Fresno", 
+    "Glenn", 
+    "Humboldt", 
+    "Imperial", 
+    "Inyo", 
+    "Kern", 
+    "Kings", 
+    "Lake", 
+    "Lassen", 
+    "Los Angeles", 
+    "Marin", 
+    "Mariposa", 
+    "Mendocino", 
+    "Merced", 
+    "Modoc", 
+    "Mono", 
+    "Monterey", 
+    "Napa", 
+    "Nevada", 
+    "Orange", 
+    "Placer", 
+    "Plumas", 
+    "Riverside", 
+    "Sacramento", 
+    "San Benito", 
+    "San Bernardino", 
+    "San Diego", 
+    "San Francisco", 
+    "San Joaquin", 
+    "San Luis Obispo", 
+    "San Mateo", 
+    "Santa Barbara", 
+    "Santa Clara", 
+    "Santa Cruz", 
+    "Shasta", 
+    "Sierra", 
+    "Siskiyou", 
+    "Solano", 
+    "Sonoma", 
+    "Stanislaus", 
+    "Sutter", 
+    "Tehama", 
+    "Trinity", 
+    "Tulare", 
+    "Tuolumne", 
+    "Ventura", 
+    "Yolo", 
+    "Yuba"
+  ),
+  lat = c(
+    37.6010,  # Alameda
+    38.3652,  # Alpine
+    38.3970,  # Amador
+    39.4739,  # Butte
+    38.2009,  # Calaveras
+    39.2068,  # Colusa
+    38.0016,  # Contra Costa
+    41.7469,  # Del Norte
+    38.7420,  # El Dorado
+    36.7470,  # Fresno
+    39.5051,  # Glenn
+    40.6765,  # Humboldt
+    32.6654,  # Imperial
+    36.5784,  # Inyo
+    35.4875,  # Kern
+    36.0945,  # Kings
+    38.9682,  # Lake
+    40.5832,  # Lassen
+    34.0522,  # Los Angeles
+    38.0449,  # Marin
+    37.4875,  # Mariposa
+    39.4502,  # Mendocino
+    37.3020,  # Merced
+    41.5572,  # Modoc
+    37.9500,  # Mono
+    36.6777,  # Monterey
+    38.2975,  # Napa
+    39.2199,  # Nevada
+    33.7175,  # Orange
+    39.0910,  # Placer
+    39.9724,  # Plumas
+    33.9533,  # Riverside
+    38.5816,  # Sacramento
+    36.5772,  # San Benito
+    34.1083,  # San Bernardino
+    32.7157,  # San Diego
+    37.7749,  # San Francisco
+    37.9563,  # San Joaquin
+    35.3733,  # San Luis Obispo
+    37.5631,  # San Mateo
+    34.4208,  # Santa Barbara
+    37.3541,  # Santa Clara
+    36.9741,  # Santa Cruz
+    40.7906,  # Shasta
+    39.5272,  # Sierra
+    41.4936,  # Siskiyou
+    38.2494,  # Solano
+    38.5004,  # Sonoma
+    37.4959,  # Stanislaus
+    39.0194,  # Sutter
+    40.0982,  # Tehama
+    40.6542,  # Trinity
+    36.1400,  # Tulare
+    38.0291,  # Tuolumne
+    34.3705,  # Ventura
+    38.7647,  # Yolo
+    39.1345   # Yuba
+  ),
+  lon = c(
+    -122.2727,  # Alameda
+    -119.8489,  # Alpine
+    -120.6080,  # Amador
+    -121.8076,  # Butte
+    -120.5606,  # Calaveras
+    -122.0015,  # Colusa
+    -121.8058,  # Contra Costa
+    -124.1018,  # Del Norte
+    -120.5351,  # El Dorado
+    -119.7724,  # Fresno
+    -122.1740,  # Glenn
+    -124.1958,  # Humboldt
+    -115.3746,  # Imperial
+    -116.2028,  # Inyo
+    -118.8597,  # Kern
+    -119.8817,  # Kings
+    -122.8008,  # Lake
+    -120.6548,  # Lassen
+    -118.2437,  # Los Angeles
+    -122.5156,  # Marin
+    -119.9309,  # Mariposa
+    -123.8060,  # Mendocino
+    -120.4844,  # Merced
+    -120.5420,  # Modoc
+    -118.9560,  # Mono
+    -121.6555,  # Monterey
+    -122.2869,  # Napa
+    -120.5734,  # Nevada
+    -117.8310,  # Orange
+    -120.8055,  # Placer
+    -120.4841,  # Plumas
+    -117.3962,  # Riverside
+    -121.4944,  # Sacramento
+    -121.5025,  # San Benito
+    -116.5810,  # San Bernardino
+    -117.1611,  # San Diego
+    -122.4194,  # San Francisco
+    -121.3134,  # San Joaquin
+    -120.6544,  # San Luis Obispo
+    -122.3710,  # San Mateo
+    -119.6982,  # Santa Barbara
+    -121.9552,  # Santa Clara
+    -121.9552,  # Santa Cruz
+    -122.4640,  # Shasta
+    -119.5890,  # Sierra
+    -122.4540,  # Siskiyou
+    -122.0364,  # Solano
+    -122.4064,  # Sonoma
+    -120.8450,  # Stanislaus
+    -121.6656,  # Sutter
+    -122.4300,  # Tehama
+    -123.1382,  # Trinity
+    -118.8597,  # Tulare
+    -120.2370,  # Tuolumne
+    -119.1396,  # Ventura
+    -121.9018,  # Yolo
+    -121.5885   # Yuba
+  )
+)
+
+
+heatmap_data <- pertussis_tot|>
+  left_join(county_coordinates, by = "County")
+
+leaflet(heatmap_data) |>
+  addTiles() |>
+  addCircleMarkers(
+    lng = ~lon,
+    lat = ~lat,
+    weight = 1,
+    radius = ~sqrt(Total_Cases) * 0.5,
+    color = "green",
+    fillOpacity = 0.5,
+    popup = ~paste(County, ": ", Total_Cases, " cases")
+  ) |>
+  setView(lng = -119.4179, lat = 36.7783, zoom = 6) # Centers map over California
+
+```
+
+One of the main limitations in the data was that there is variance in the trend of disease reporting. While some diseases, such as Pertussis, include data from 2001, other diseases such as acute Hepatitis B began in 2021. This is likely due to the ongoing evolution in the definition of "reportable disease and conditions" as it is redefined by the California Department of Public Health as well as adapted by Local Health Departments. Additionally, the analysis likely would be different if it was stratified adjusting for Los Angeles county, since there may be bias in that there is much more information providing by the Los Angeles County Department of Public Health forwarding to CDPH, in comparison to other counties with health departments of smaller capacities.
+
+## Conclusion
+Of the main vaccine preventable disease cases, Los Angeles county was highlighted with high number of case incidence counts annually in regards to Pertussis, Invasive Meningococcal Disease, and Acute/Chronic Hepatitis B. San Diego county reported an epidemic of Hepatitis A in 2017. This data provides interesting insight into trends of Vaccine Preventable Disease Cases in California. It has great potential in future analyses, including: comparison of two or more counties in a specific disease, supplementing incidence case numbers with researching implementation of intervention programs, and more. Another interesting future research topic would be to analyze the vaccine preventable disease case counts in California in comparison to another U.S. state, or national statistics as well.
+
+
+
+```{r, echo=FALSE, results='hide'}
+
+if (FALSE) {
+
+## Appendix: Code Used for Project
+#This section includes is all of the code I created in data cleaning and data wrangling to compile my report.
+
+#Set Up Code
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+install.packages("knitr")
 install.packages("readr")
+
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
 
 vaccine <- read_csv("~/Desktop/a7a4d868-f6d2-49c9-8a11-904c69a0e3a0.csv")
 
 #Variables: ID, Disease, County, Year, Count
+}
 ```
 
-```{r}
+```{r, echo=FALSE, results='hide'}
+if (FALSE) {
+# EDA
+
+#Remove counties that reported 0 cases in a year
+vaccine <- vaccine |> filter(Count != 0)
+
+#Check count of disease categories in the dataset
 vaccine |>
-  count(County, sort=TRUE)
+  count(Disease, sort=TRUE)
+
+#Checked for any missing values or irregularities
+#summary(vaccine)
+
+#Total number of cases in dataset, stratify by counties, states overall, and top 5 diseases
+county <- vaccine |> filter (County != 'California')
+california <- vaccine |> filter (County == 'California')
+
+#summations, each year
+#table(vaccine$Year)
+#sum(county$Count)
+
+dim(county)
+head(county)
+tail(county)
+str(county)
+summary(county)
+#No issues found in data irregularities. Year and Count variables numeric. Disease & County variables are character class. _id variable is irrelevant in this analysis.
+
+}
 ```
 
-##Introduction
-For my project, 
+```{r, echo=FALSE, results='hide'}
+#Print Nice Table of Statistics
 
-##Methods
+#diseases_total <- county |> 
+ # group_by(Disease) |> 
+ # summarise(Total_Cases = sum(Count, na.rm = TRUE)) |> 
+ # arrange(desc(Total_Cases)) |> 
+ # slice_head(n = 15)
 
-##Preliminary Results
+#library (knitr)
+#kable(diseases_total, 
+    #  col.names = c("Disease", "Total Cases"), 
+     # caption = "Total Cases of Vaccine-Preventable Diseases Reported in California, 2001-2022")
 
-##Conclusion
+```
+
+```{r, echo=FALSE, results='hide'}
+if (FALSE) {
+#Preliminary Analysis #1: Of the top five vaccine preventable disease cases reported in California in the last decades, were there any signs of epidemics in specific counties?
+
+# Group by Disease and summarize the total cases
+top_diseases <- county |> 
+  group_by(Disease) |> 
+  summarise(Total_Cases = sum(Count, na.rm = TRUE)) |> 
+  arrange(desc(Total_Cases)) |> 
+  slice_head(n = 5)
+
+top_diseases
+
+#Top 5, create individual datasets
+pertussis <- county |> filter (Disease == 'Pertussis')
+hbv_chronic <- county |> filter (Disease == 'Hepatitis B, Chronic')
+hav <- county |> filter (Disease == 'Hepatitis A')
+IMD <- county |> filter (Disease == 'Invasive Meningococcal Disease')
+hbv_acute <- county |> filter (Disease == 'Hepatitis B, Acute')
+
+#Top 5 Counties with Recorded Pertussis
+pertussis |> arrange(desc(Count)) |> slice_head(n=5)
+
+  #Stratify Pertussis, Check Los Angeles Trend
+pertussis_la <- pertussis |> 
+  filter(County == 'Los Angeles')
+
+ggplot(pertussis_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Figure 1: Pertussis Cases in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+  scale_x_continuous(breaks = seq(min(pertussis_la$Year), max(pertussis_la$Year), by = 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+#Top 5 Counties with Recorded Chronic HBV
+hbv_chronic |> arrange(desc(Count)) |> slice_head(n=5)
+
+#Top 5 Counties with Recorded Hepatitis A
+hav |> arrange(desc(Count)) |> slice_head(n=5)
+
+  #Stratify HAV, Check San Diego Trend
+hav_sd <- hav |> 
+  filter(County == 'San Diego')
+
+ggplot(hav_sd, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(title = "Figure 2: Hepatitis A Cases in San Diego County, by Year",
+       x = "Year",
+       y = "Number of Cases") + 
+  scale_x_continuous(breaks = seq(min(hav_sd$Year), max(hav_sd$Year), by = 1)) +
+  theme_minimal() 
+
+#Top 5 Counties with Recorded IMD
+IMD |> arrange(desc(Count)) |> slice_head(n=5)
+
+  #Stratify IMD, Check LA Trend
+IMD_la <- IMD |> 
+  filter(County == 'Los Angeles')
+
+ggplot(IMD_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(title = "Figure 3: Invasive Menginococcal Cases in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+  theme_minimal() 
+
+#Top 5 Counties with Recorded acute hep b
+hbv_acute |> arrange(desc(Count)) |> slice_head(n=5)
+
+  #Stratify acute HBV, Check LA Trend
+hbv_la <- hbv_acute |> 
+  filter(County == 'Los Angeles')
+
+ggplot(hbv_la, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity", fill = "plum") +
+  labs(title = "Figure 4: Acute Hepatitis B in Los Angeles County, by Year",
+       x = "Year",
+       y = "Number of Cases") +
+    scale_x_continuous(breaks = seq(min(hav_sd$Year), max(hav_sd$Year), by = 1)) +
+  theme_minimal() 
+
+#Preliminary Analysis #2: Is there a geographical relationship between location and case incidence? 
+#HeatMap of Pertussis
+library (leaflet)
+pertussis_tot <- pertussis |> group_by(County)|>
+  summarise(Total_Cases =sum(Count, na.rm=TRUE)) |>
+  ungroup()
+
+county_coordinates <- data.frame(
+  County = c(
+    "Alameda", 
+    "Alpine", 
+    "Amador", 
+    "Butte", 
+    "Calaveras", 
+    "Colusa", 
+    "Contra Costa", 
+    "Del Norte", 
+    "El Dorado", 
+    "Fresno", 
+    "Glenn", 
+    "Humboldt", 
+    "Imperial", 
+    "Inyo", 
+    "Kern", 
+    "Kings", 
+    "Lake", 
+    "Lassen", 
+    "Los Angeles", 
+    "Marin", 
+    "Mariposa", 
+    "Mendocino", 
+    "Merced", 
+    "Modoc", 
+    "Mono", 
+    "Monterey", 
+    "Napa", 
+    "Nevada", 
+    "Orange", 
+    "Placer", 
+    "Plumas", 
+    "Riverside", 
+    "Sacramento", 
+    "San Benito", 
+    "San Bernardino", 
+    "San Diego", 
+    "San Francisco", 
+    "San Joaquin", 
+    "San Luis Obispo", 
+    "San Mateo", 
+    "Santa Barbara", 
+    "Santa Clara", 
+    "Santa Cruz", 
+    "Shasta", 
+    "Sierra", 
+    "Siskiyou", 
+    "Solano", 
+    "Sonoma", 
+    "Stanislaus", 
+    "Sutter", 
+    "Tehama", 
+    "Trinity", 
+    "Tulare", 
+    "Tuolumne", 
+    "Ventura", 
+    "Yolo", 
+    "Yuba"
+  ),
+  lat = c(
+    37.6010,  # Alameda
+    38.3652,  # Alpine
+    38.3970,  # Amador
+    39.4739,  # Butte
+    38.2009,  # Calaveras
+    39.2068,  # Colusa
+    38.0016,  # Contra Costa
+    41.7469,  # Del Norte
+    38.7420,  # El Dorado
+    36.7470,  # Fresno
+    39.5051,  # Glenn
+    40.6765,  # Humboldt
+    32.6654,  # Imperial
+    36.5784,  # Inyo
+    35.4875,  # Kern
+    36.0945,  # Kings
+    38.9682,  # Lake
+    40.5832,  # Lassen
+    34.0522,  # Los Angeles
+    38.0449,  # Marin
+    37.4875,  # Mariposa
+    39.4502,  # Mendocino
+    37.3020,  # Merced
+    41.5572,  # Modoc
+    37.9500,  # Mono
+    36.6777,  # Monterey
+    38.2975,  # Napa
+    39.2199,  # Nevada
+    33.7175,  # Orange
+    39.0910,  # Placer
+    39.9724,  # Plumas
+    33.9533,  # Riverside
+    38.5816,  # Sacramento
+    36.5772,  # San Benito
+    34.1083,  # San Bernardino
+    32.7157,  # San Diego
+    37.7749,  # San Francisco
+    37.9563,  # San Joaquin
+    35.3733,  # San Luis Obispo
+    37.5631,  # San Mateo
+    34.4208,  # Santa Barbara
+    37.3541,  # Santa Clara
+    36.9741,  # Santa Cruz
+    40.7906,  # Shasta
+    39.5272,  # Sierra
+    41.4936,  # Siskiyou
+    38.2494,  # Solano
+    38.5004,  # Sonoma
+    37.4959,  # Stanislaus
+    39.0194,  # Sutter
+    40.0982,  # Tehama
+    40.6542,  # Trinity
+    36.1400,  # Tulare
+    38.0291,  # Tuolumne
+    34.3705,  # Ventura
+    38.7647,  # Yolo
+    39.1345   # Yuba
+  ),
+  lon = c(
+    -122.2727,  # Alameda
+    -119.8489,  # Alpine
+    -120.6080,  # Amador
+    -121.8076,  # Butte
+    -120.5606,  # Calaveras
+    -122.0015,  # Colusa
+    -121.8058,  # Contra Costa
+    -124.1018,  # Del Norte
+    -120.5351,  # El Dorado
+    -119.7724,  # Fresno
+    -122.1740,  # Glenn
+    -124.1958,  # Humboldt
+    -115.3746,  # Imperial
+    -116.2028,  # Inyo
+    -118.8597,  # Kern
+    -119.8817,  # Kings
+    -122.8008,  # Lake
+    -120.6548,  # Lassen
+    -118.2437,  # Los Angeles
+    -122.5156,  # Marin
+    -119.9309,  # Mariposa
+    -123.8060,  # Mendocino
+    -120.4844,  # Merced
+    -120.5420,  # Modoc
+    -118.9560,  # Mono
+    -121.6555,  # Monterey
+    -122.2869,  # Napa
+    -120.5734,  # Nevada
+    -117.8310,  # Orange
+    -120.8055,  # Placer
+    -120.4841,  # Plumas
+    -117.3962,  # Riverside
+    -121.4944,  # Sacramento
+    -121.5025,  # San Benito
+    -116.5810,  # San Bernardino
+    -117.1611,  # San Diego
+    -122.4194,  # San Francisco
+    -121.3134,  # San Joaquin
+    -120.6544,  # San Luis Obispo
+    -122.3710,  # San Mateo
+    -119.6982,  # Santa Barbara
+    -121.9552,  # Santa Clara
+    -121.9552,  # Santa Cruz
+    -122.4640,  # Shasta
+    -119.5890,  # Sierra
+    -122.4540,  # Siskiyou
+    -122.0364,  # Solano
+    -122.4064,  # Sonoma
+    -120.8450,  # Stanislaus
+    -121.6656,  # Sutter
+    -122.4300,  # Tehama
+    -123.1382,  # Trinity
+    -118.8597,  # Tulare
+    -120.2370,  # Tuolumne
+    -119.1396,  # Ventura
+    -121.9018,  # Yolo
+    -121.5885   # Yuba
+  )
+)
+
+
+heatmap_data <- pertussis_tot|>
+  left_join(county_coordinates, by = "County")
+
+leaflet(heatmap_data) |>
+  addTiles() |>
+  addCircleMarkers(
+    lng = ~lon,
+    lat = ~lat,
+    weight = 1,
+    radius = ~sqrt(Total_Cases) * 0.5,
+    color = "green",
+    fillOpacity = 0.5,
+    popup = ~paste(County, ": ", Total_Cases, " cases")
+  ) |>
+  setView(lng = -119.4179, lat = 36.7783, zoom = 6) # Centers map over California
+}
+```
+
+
+
